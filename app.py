@@ -1,9 +1,51 @@
-import pickle
-import requests
-import pandas as pd
 import streamlit as st
+import pickle
+import pandas as pd
+import requests
 
-# Function to load pickle file from a URL
+# Function to fetch movie posters
+def fetch_poster(movie_id):
+    try:
+        url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US'
+        response = requests.get(url)
+        data = response.json()
+        return f"https://image.tmdb.org/t/p/w185/{data['poster_path']}"
+    except Exception as e:
+        return "https://via.placeholder.com/185?text=No+Image"
+
+# Function to recommend movies
+def recommend(movie):
+    try:
+        # Check if the movie exists in the dataset
+        if movie not in movies['title'].values:
+            st.error(f"The movie '{movie}' is not in the database.")
+            return [], []
+        
+        # Find the index of the selected movie
+        movie_index = movies[movies['title'] == movie].index[0]
+
+        # Get similarity scores for the selected movie
+        distances = similarity[movie_index]
+        movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+
+        # Prepare recommendations
+        recommended_movies = []
+        recommended_movies_poster = []
+        for i in movies_list:
+            movie_id = movies.iloc[i[0]].movie_id
+            recommended_movies.append(movies.iloc[i[0]].title)
+            recommended_movies_poster.append(fetch_poster(movie_id))
+
+        return recommended_movies, recommended_movies_poster
+    except Exception as e:
+        st.error(f"An error occurred during recommendation: {e}")
+        return [], []
+
+# Load movies data
+movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
+movies = pd.DataFrame(movies_dict)
+
+# Load similarity matrix
 def load_pickle_from_url(url):
     response = requests.get(url)
     if response.status_code == 200:
@@ -11,61 +53,33 @@ def load_pickle_from_url(url):
     else:
         raise Exception(f"Failed to fetch file from URL. HTTP Status Code: {response.status_code}")
 
-# URL to the similarity.pkl file
 similarity_url = "https://drive.google.com/uc?id=19U23aQ947aR_8pljX09aZ8T-N_DkCJMx&export=download"
-
-# Load the similarity matrix from the URL
 try:
     similarity = load_pickle_from_url(similarity_url)
     print("Successfully loaded similarity.pkl from the URL.")
 except Exception as e:
-    print(f"Error loading similarity.pkl: {e}")
-
-# Assuming you have other parts of your code for the recommender system
-def fetch_poster(movie_id):
-    response = requests.get(f'https://api.themoviedb.org/3/movie/{movie_id}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US')
-    data = response.json()
-    return f"https://image.tmdb.org/t/p/w185/{data['poster_path']}"
-
-def recommend(movie):
-    movie_index = movies[movies['title'] == movie].index[0]
-    distances = similarity[movie_index]
-    movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-
-    recommended_movies = []
-    recommended_movies_poster = []
-    for i in movies_list:
-        movie_id = movies.iloc[i[0]].movie_id
-
-        recommended_movies.append(movies.iloc[i[0]].title)
-        recommended_movies_poster.append(fetch_poster(movie_id))
-    return recommended_movies, recommended_movies_poster
-
-# Load movies data
-movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
-movies = pd.DataFrame(movies_dict)
+    st.error(f"Error loading similarity.pkl: {e}")
+    similarity = None
 
 # Streamlit UI
 st.title('Movie Recommender System')
 
-selected_movie_name = st.selectbox('What you want to see?', movies['title'].values)
+# Dropdown for selecting a movie
+selected_movie_name = st.selectbox(
+    'What movie would you like to watch?',
+    movies['title'].values
+)
 
+# Recommendation button
 if st.button('Recommend'):
-    names, posters = recommend(selected_movie_name)
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.text(names[0])
-        st.image(posters[0])
-    with col2:
-        st.text(names[1])
-        st.image(posters[1])
-
-    with col3:
-        st.text(names[2])
-        st.image(posters[2])
-    with col4:
-        st.text(names[3])
-        st.image(posters[3])
-    with col5:
-        st.text(names[4])
-        st.image(posters[4])
+    if similarity is not None:
+        names, posters = recommend(selected_movie_name)
+        if names and posters:
+            # Display recommended movies in columns
+            cols = st.columns(5)
+            for i, col in enumerate(cols):
+                if i < len(names):
+                    col.text(names[i])
+                    col.image(posters[i])
+    else:
+        st.error("Similarity data could not be loaded. Please check the source file.")
