@@ -1,25 +1,36 @@
+import os
 import requests
+import pickle
+import pandas as pd
+import streamlit as st
 
 # Google Drive file ID
 file_id = "19U23aQ947aR_8pljX09aZ8T-N_DkCJMx"
 url = f"https://drive.google.com/uc?id={file_id}&export=download"
 
-# Send a GET request to download the file
-response = requests.get(url, stream=True)
+# Download similarity.pkl if not already downloaded
+if not os.path.exists("similarity.pkl"):
+    print("File not found, downloading...")
+    response = requests.get(url, stream=True)
 
-# Write the content to a file if the request is successful
-if response.status_code == 200:
-    with open("similarity.pkl", "wb") as f:
-        for chunk in response.iter_content(1024):
-            f.write(chunk)
-    print("File downloaded successfully!")
-else:
-    print("Failed to download the file")
+    if response.status_code == 200:
+        with open("similarity.pkl", "wb") as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+        print("File downloaded successfully!")
+    else:
+        print(f"Failed to download file. HTTP status code: {response.status_code}")
+        raise Exception("Unable to download the file")
 
-# Now you can load the pickle files and use them for your recommender system
-
-import pickle
-import pandas as pd
+# Now load the pickle files
+try:
+    similarity = pickle.load(open('similarity.pkl', 'rb'))
+    print("Similarity file loaded successfully.")
+except FileNotFoundError:
+    print("Error: similarity.pkl not found.")
+except Exception as e:
+    print(f"Error loading similarity.pkl: {e}")
+    raise
 
 # Assuming you have other parts of your code for the recommender system
 def fetch_poster(movie_id):
@@ -41,14 +52,11 @@ def recommend(movie):
         recommended_movies_poster.append(fetch_poster(movie_id))
     return recommended_movies, recommended_movies_poster
 
-# Load movies and similarity data
+# Load movies data
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
 
-similarity = pickle.load(open('similarity.pkl', 'rb'))
-
-import streamlit as st
-
+# Streamlit UI
 st.title('Movie Recommender System')
 
 selected_movie_name = st.selectbox('What you want to see?', movies['title'].values)
