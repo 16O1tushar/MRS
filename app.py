@@ -1,36 +1,25 @@
-import os
-import requests
 import pickle
+import requests
 import pandas as pd
 import streamlit as st
 
-# Google Drive file ID
-file_id = "19U23aQ947aR_8pljX09aZ8T-N_DkCJMx"
-url = f"https://drive.google.com/uc?id={file_id}&export=download"
-
-# Download similarity.pkl if not already downloaded
-if not os.path.exists("similarity.pkl"):
-    print("File not found, downloading...")
-    response = requests.get(url, stream=True)
-
+# Function to load pickle file from a URL
+def load_pickle_from_url(url):
+    response = requests.get(url)
     if response.status_code == 200:
-        with open("similarity.pkl", "wb") as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)
-        print("File downloaded successfully!")
+        return pickle.loads(response.content)
     else:
-        print(f"Failed to download file. HTTP status code: {response.status_code}")
-        raise Exception("Unable to download the file")
+        raise Exception(f"Failed to fetch file from URL. HTTP Status Code: {response.status_code}")
 
-# Now load the pickle files
+# URL to the similarity.pkl file
+similarity_url = "https://drive.google.com/uc?id=19U23aQ947aR_8pljX09aZ8T-N_DkCJMx&export=download"
+
+# Load the similarity matrix from the URL
 try:
-    similarity = pickle.load(open('similarity.pkl', 'rb'))
-    print("Similarity file loaded successfully.")
-except FileNotFoundError:
-    print("Error: similarity.pkl not found.")
+    similarity = load_pickle_from_url(similarity_url)
+    print("Successfully loaded similarity.pkl from the URL.")
 except Exception as e:
     print(f"Error loading similarity.pkl: {e}")
-    raise
 
 # Assuming you have other parts of your code for the recommender system
 def fetch_poster(movie_id):
