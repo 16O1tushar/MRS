@@ -41,25 +41,40 @@ def recommend(movie):
         st.error(f"An error occurred during recommendation: {e}")
         return [], []
 
+# Function to load pickle from a URL
+def load_pickle_from_url(url):
+    try:
+        # Handle Google Drive download URL
+        file_id = url.split('=')[1]
+        download_url = f'https://drive.google.com/uc?id={file_id}&export=download'
+        
+        response = requests.get(download_url, stream=True)
+        response.raise_for_status()  # Check for any errors in the response
+
+        # Return the pickle content after downloading
+        return pickle.loads(response.content)
+    
+    except Exception as e:
+        st.error(f"Error downloading or loading pickle file from URL: {e}")
+        return None
+
+# Load similarity matrix from URL (first try)
+similarity_url = "https://drive.google.com/uc?id=19U23aQ947aR_8pljX09aZ8T-N_DkCJMx&export=download"
+similarity = load_pickle_from_url(similarity_url)
+
+# If the URL fails, try loading locally
+if similarity is None:
+    try:
+        with open("similarity.pkl", "rb") as file:
+            similarity = pickle.load(file)
+        print("File loaded successfully from local storage!")
+    except Exception as e:
+        st.error(f"Error loading the file locally: {e}")
+        similarity = None
+
 # Load movies data
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
-
-# Load similarity matrix
-def load_pickle_from_url(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        return pickle.loads(response.content)
-    else:
-        raise Exception(f"Failed to fetch file from URL. HTTP Status Code: {response.status_code}")
-
-similarity_url = "https://drive.google.com/uc?id=19U23aQ947aR_8pljX09aZ8T-N_DkCJMx&export=download"
-try:
-    similarity = load_pickle_from_url(similarity_url)
-    print("Successfully loaded similarity.pkl from the URL.")
-except Exception as e:
-    st.error(f"Error loading similarity.pkl: {e}")
-    similarity = None
 
 # Streamlit UI
 st.title('Movie Recommender System')
