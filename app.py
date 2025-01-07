@@ -44,9 +44,9 @@ def recommend(movie):
 # Function to load pickle from a URL
 def load_pickle_from_url(url):
     try:
-        # Handle Google Drive download URL
+        # Google Drive direct download URL
         file_id = url.split('=')[1]
-        download_url = f'https://drive.google.com/uc?id={file_id}&export=download'
+        download_url = f'https://drive.google.com/file/d/19U23aQ947aR_8pljX09aZ8T-N_DkCJMx/view?usp=sharing}
         
         response = requests.get(download_url, stream=True)
         response.raise_for_status()  # Check for any errors in the response
@@ -57,6 +57,7 @@ def load_pickle_from_url(url):
     except Exception as e:
         st.error(f"Error downloading or loading pickle file from URL: {e}")
         return None
+
 
 # Load similarity matrix from URL (first try)
 similarity_url = "https://drive.google.com/uc?id=19U23aQ947aR_8pljX09aZ8T-N_DkCJMx&export=download"
